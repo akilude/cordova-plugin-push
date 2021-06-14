@@ -139,7 +139,7 @@ public class FCMService extends FirebaseMessagingService implements PushConstant
         //Custom code to wake open the app
                 
         //Code to get contents of the bundle
-        String type1;
+        String type1 = "";
 
         if (extras != null) {
 
