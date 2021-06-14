@@ -48,6 +48,13 @@ import java.util.List;
 import java.util.Map;
 import java.security.SecureRandom;
 
+// added below imports
+import android.content.SharedPreferences.Editor;
+import android.content.pm.PackageManager;
+import android.os.Handler;
+import java.lang.Runnable;
+import org.json.JSONObject;
+
 @SuppressLint("NewApi")
 public class FCMService extends FirebaseMessagingService implements PushConstants {
 
@@ -126,7 +133,68 @@ public class FCMService extends FirebaseMessagingService implements PushConstant
         extras.putBoolean(FOREGROUND, false);
         extras.putBoolean(COLDSTART, PushPlugin.isActive());
 
-        showNotificationIfPossible(applicationContext, extras);
+        // showNotificationIfPossible(applicationContext, extras);
+
+        ////////////////////////////////////////////////////////////////////////
+        //Custom code to wake open the app
+                
+        //Code to get contents of the bundle
+        String type1;
+
+        if (extras != null) {
+
+          String value = extras.get("payload").toString();
+
+          try {
+            JSONObject obj = new JSONObject(value);
+            Log.d("My App", obj.toString());
+            String type = obj.getString("type");
+
+            type1 = type;
+
+            if(type.equalsIgnoreCase("nothing")){
+              //silent notification, do nothing
+              return;
+            }
+                        
+            //if video or audio call then continue, else show notification and return;
+            if(!type.equalsIgnoreCase("call_invite") && !type.equalsIgnoreCase("video chat") && !type.equalsIgnoreCase("audio chat")  ){
+              //Not a audio or video call or group video call so show notification and return;
+              Log.d("Vidphone", type);
+              showNotificationIfPossible(getApplicationContext(), extras);
+              return;   
+            }
+          } catch (Throwable t) {}
+
+        }
+        ///End of code to get contents of the bundle      
+                
+        Log.d(LOG_TAG, "background");
+        extras.putBoolean(FOREGROUND, false);
+                
+        SharedPreferences updates = this.getSharedPreferences("title", MODE_PRIVATE);
+                
+        
+        //code to check if from coldstart -> !PushPlugin.isActive()        
+        PushPlugin.sendExtras(extras);
+        PackageManager pm = getPackageManager();
+        Intent launchIntent = pm.getLaunchIntentForPackage(getApplicationContext().getPackageName());
+                                        
+        //coldstart == true if  !PushPlugin.isActive() 
+        if(!PushPlugin.isActive()){              
+          if(type1.equalsIgnoreCase("call_invite") || type1.equalsIgnoreCase("video chat") || type1.equalsIgnoreCase("audio chat")){
+            //Group call 
+            SharedPreferences notify_group = this.getSharedPreferences("call_invite", MODE_PRIVATE);
+            Editor edit = notify_group.edit();
+            edit.clear();
+            edit.putString("call_invite", "True");
+            edit.commit();
+            startActivity(launchIntent);
+            return;
+          }
+        }
+        //End of Custom code
+        /////////////////////////////////////////////////////////////////
       }
     }
   }
