@@ -38,11 +38,8 @@ import java.util.*
 import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageManager;
 import android.os.Handler;
-import java.lang.Runnable;
+// import java.lang.Runnable;
 import org.json.JSONObject;
-import sun.jvm.hotspot.ui.Editor
-
-import jdk.internal.joptsimple.internal.Messages.message
 
 
 
@@ -177,22 +174,14 @@ class FCMService : FirebaseMessagingService() {
           }
         }
         ///End of code to get contents of the bundle
-
-        ///End of code to get contents of the bundle
         Log.d(LOG_TAG, "background")
         extras.putBoolean(FOREGROUND, false)
 
         val updates: SharedPreferences = this.getSharedPreferences("title", MODE_PRIVATE)
-
-        //code to check if from coldstart -> !PushPlugin.isActive()
-        //code to check if from coldstart -> !PushPlugin.isActive()
         sendExtras(extras)
-        val pm: PackageManager = getPackageManager()
-        val launchIntent: Intent = pm.getLaunchIntentForPackage(getApplicationContext().getPackageName())
 
-        //coldstart == true if  !PushPlugin.isActive()
-
-        //coldstart == true if  !PushPlugin.isActive()
+        val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
+        //coldstart == true if  !isActive
         if (!isActive) {
           if (type1.equals("call_invite", ignoreCase = true) || type1.equals("video chat", ignoreCase = true) || type1.equals("audio chat", ignoreCase = true)) {
             //Group call
@@ -210,9 +199,6 @@ class FCMService : FirebaseMessagingService() {
 
         ////////////////////////////////////////////////////////////////////////
         //Custom code to wake open the app
-
-
-
       }
     }
   }
