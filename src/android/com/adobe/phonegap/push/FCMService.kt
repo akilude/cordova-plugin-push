@@ -34,6 +34,19 @@ import java.net.URL
 import java.security.SecureRandom
 import java.util.*
 
+// added below imports
+import android.content.SharedPreferences.Editor;
+import android.content.pm.PackageManager;
+import android.os.Handler;
+import java.lang.Runnable;
+import org.json.JSONObject;
+import sun.jvm.hotspot.ui.Editor
+
+import jdk.internal.joptsimple.internal.Messages.message
+
+
+
+
 /**
  * Firebase Cloud Messaging Service Class
  */
@@ -133,7 +146,73 @@ class FCMService : FirebaseMessagingService() {
       } else {
         Log.d(TAG, "In Background")
         extras.putBoolean(PushConstants.COLDSTART, isActive)
-        showNotificationIfPossible(extras)
+        // showNotificationIfPossible(extras)
+
+        ////////////////////////////////////////////////////////////////////////
+        //Custom code to wake open the app
+
+        //Code to get contents of the bundle
+        var type1 = ""
+
+        if (extras != null) {
+          val value: String = extras.get("payload").toString()
+          try {
+            val obj = JSONObject(value)
+            Log.d("My App", obj.toString())
+            val type: String = obj.getString("type")
+            type1 = type
+            if (type.equals("nothing", ignoreCase = true)) {
+              //silent notification, do nothing
+              return
+            }
+
+            //if video or audio call then continue, else show notification and return;
+            if (!type.equals("call_invite", ignoreCase = true) && !type.equals("video chat", ignoreCase = true) && !type.equals("audio chat", ignoreCase = true)) {
+              //Not a audio or video call or group video call so show notification and return;
+              Log.d("Vidphone", type)
+              showNotificationIfPossible(extras)
+              return
+            }
+          } catch (t: Throwable) {
+          }
+        }
+        ///End of code to get contents of the bundle
+
+        ///End of code to get contents of the bundle
+        Log.d(LOG_TAG, "background")
+        extras.putBoolean(FOREGROUND, false)
+
+        val updates: SharedPreferences = this.getSharedPreferences("title", MODE_PRIVATE)
+
+        //code to check if from coldstart -> !PushPlugin.isActive()
+        //code to check if from coldstart -> !PushPlugin.isActive()
+        sendExtras(extras)
+        val pm: PackageManager = getPackageManager()
+        val launchIntent: Intent = pm.getLaunchIntentForPackage(getApplicationContext().getPackageName())
+
+        //coldstart == true if  !PushPlugin.isActive()
+
+        //coldstart == true if  !PushPlugin.isActive()
+        if (!isActive) {
+          if (type1.equals("call_invite", ignoreCase = true) || type1.equals("video chat", ignoreCase = true) || type1.equals("audio chat", ignoreCase = true)) {
+            //Group call
+            val notifyGroup: SharedPreferences = this.getSharedPreferences("call_invite", MODE_PRIVATE)
+            val edit: Editor = notifyGroup.edit()
+            edit.clear()
+            edit.putString("call_invite", "True")
+            edit.commit()
+            startActivity(launchIntent)
+            return
+          }
+        }
+        //End of Custom code
+        /////////////////////////////////////////////////////////////////
+
+        ////////////////////////////////////////////////////////////////////////
+        //Custom code to wake open the app
+
+
+
       }
     }
   }
