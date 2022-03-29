@@ -38,8 +38,6 @@ import java.util.*
 import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageManager;
 import android.os.Handler;
-// import java.lang.Runnable;
-import org.json.JSONObject;
 
 
 
@@ -174,8 +172,7 @@ class FCMService : FirebaseMessagingService() {
           }
         }
         ///End of code to get contents of the bundle
-        Log.d(LOG_TAG, "background")
-        extras.putBoolean(FOREGROUND, false)
+        extras.putBoolean(PushConstants.FOREGROUND, false)
 
         val updates: SharedPreferences = this.getSharedPreferences("title", MODE_PRIVATE)
         sendExtras(extras)
