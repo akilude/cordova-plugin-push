@@ -1,5 +1,6 @@
 package com.adobe.phonegap.push
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.annotation.TargetApi
 import android.app.Activity
@@ -7,6 +8,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ContentResolver
 import android.content.Context
+import android.content.pm.PackageManager
 import android.content.res.Resources.NotFoundException
 import android.media.AudioAttributes
 import android.net.Uri
@@ -16,7 +18,7 @@ import android.provider.Settings
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.google.firebase.iid.FirebaseInstanceId
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
 import me.leolin.shortcutbadger.ShortcutBadger
 import org.apache.cordova.*
@@ -25,6 +27,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.util.*
+import java.util.concurrent.ExecutionException
 
 /**
  * Cordova Plugin Push
@@ -36,12 +39,15 @@ class PushPlugin : CordovaPlugin() {
     const val PREFIX_TAG: String = "cordova-plugin-push"
     private const val TAG: String = "$PREFIX_TAG (PushPlugin)"
 
+    private const val REQ_CODE_INITIALIZE_PLUGIN = 0
+
     /**
      * Is the WebView in the foreground?
      */
     var isInForeground: Boolean = false
 
     private var pushContext: CallbackContext? = null
+    private var pluginInitData: JSONArray? = null
     private var gWebView: CordovaWebView? = null
     private val gCachedExtras = Collections.synchronizedList(ArrayList<Bundle>())
 
@@ -432,17 +438,21 @@ class PushPlugin : CordovaPlugin() {
     // Better Logging
     fun formatLogMessage(msg: String): String = "Execute::Initialize: ($msg)"
 
+    pushContext = callbackContext
+    pluginInitData = data;
+
+    var hasPermission = checkForPostNotificationsPermission()
+    if (!hasPermission)
+      return
+
     cordova.threadPool.execute(Runnable {
       Log.v(TAG, formatLogMessage("Data=$data"))
-
-      pushContext = callbackContext
 
       val sharedPref = applicationContext.getSharedPreferences(
         PushConstants.COM_ADOBE_PHONEGAP_PUSH,
         Context.MODE_PRIVATE
       )
       var jo: JSONObject? = null
-      var token: String? = null
       var senderID: String? = null
 
       try {
@@ -461,18 +471,21 @@ class PushPlugin : CordovaPlugin() {
         Log.v(TAG, formatLogMessage("JSONObject=$jo"))
         Log.v(TAG, formatLogMessage("senderID=$senderID"))
 
-        try {
-          token = FirebaseInstanceId.getInstance().token
+        val token = try {
+          try {
+            Tasks.await(FirebaseMessaging.getInstance().token)
+          } catch (e: ExecutionException) {
+            throw e.cause ?: e
+          }
         } catch (e: IllegalStateException) {
           Log.e(TAG, formatLogMessage("Firebase Token Exception ${e.message}"))
-        }
-
-        if (token == null) {
-          try {
-            token = FirebaseInstanceId.getInstance().getToken(senderID, PushConstants.FCM)
-          } catch (e: IllegalStateException) {
-            Log.e(TAG, formatLogMessage("Firebase Token Exception ${e.message}"))
-          }
+          null
+        } catch (e: ExecutionException) {
+          Log.e(TAG, formatLogMessage("Firebase Token Exception ${e.message}"))
+          null
+        } catch (e: InterruptedException) {
+          Log.e(TAG, formatLogMessage("Firebase Token Exception ${e.message}"))
+          null
         }
 
         if (token != "") {
@@ -597,6 +610,22 @@ class PushPlugin : CordovaPlugin() {
     })
   }
 
+  private fun checkForPostNotificationsPermission(): Boolean {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+      if (!PermissionHelper.hasPermission(this, Manifest.permission.POST_NOTIFICATIONS))
+      {
+        PermissionHelper.requestPermission(
+          this,
+          REQ_CODE_INITIALIZE_PLUGIN,
+          Manifest.permission.POST_NOTIFICATIONS
+        )
+        return false
+      }
+    }
+
+    return true
+  }
+
   private fun executeActionUnregister(data: JSONArray, callbackContext: CallbackContext) {
     // Better Logging
     fun formatLogMessage(msg: String): String = "Execute::Unregister: ($msg)"
@@ -612,7 +641,11 @@ class PushPlugin : CordovaPlugin() {
         if (topics != null) {
           unsubscribeFromTopics(topics)
         } else {
-          FirebaseInstanceId.getInstance().deleteInstanceId()
+          try {
+            Tasks.await(FirebaseMessaging.getInstance().deleteToken())
+          } catch (e: ExecutionException) {
+            throw e.cause ?: e
+          }
           Log.v(TAG, formatLogMessage("UNREGISTER"))
 
           /**
@@ -639,6 +672,9 @@ class PushPlugin : CordovaPlugin() {
         callbackContext.success()
       } catch (e: IOException) {
         Log.e(TAG, formatLogMessage("IO Exception ${e.message}"))
+        callbackContext.error(e.message)
+      } catch (e: InterruptedException) {
+        Log.e(TAG, formatLogMessage("Interrupted ${e.message}"))
         callbackContext.error(e.message)
       }
     }
@@ -860,6 +896,31 @@ class PushPlugin : CordovaPlugin() {
     topic?.let {
       Log.d(TAG, "Unsubscribing to topic: $it")
       FirebaseMessaging.getInstance().unsubscribeFromTopic(it)
+    }
+  }
+
+  override fun onRequestPermissionResult(
+    requestCode: Int,
+    permissions: Array<out String>?,
+    grantResults: IntArray?
+  ) {
+    super.onRequestPermissionResult(requestCode, permissions, grantResults)
+
+    for (r in grantResults!!) {
+      if (r == PackageManager.PERMISSION_DENIED) {
+        pushContext?.sendPluginResult(
+          PluginResult(
+            PluginResult.Status.ILLEGAL_ACCESS_EXCEPTION,
+            "Permission to post notifications was denied by the user"
+          )
+        )
+        return
+      }
+    }
+
+    if (requestCode == REQ_CODE_INITIALIZE_PLUGIN)
+    {
+      executeActionInitialize(pluginInitData!!, pushContext!!)
     }
   }
 }
