@@ -38,6 +38,9 @@ import java.util.*
 import android.content.SharedPreferences.Editor;
 import android.content.pm.PackageManager;
 import android.os.Handler;
+import android.R
+import android.app.NotificationChannel
+import com.everycrave.livewire.MainActivity
 
 
 
@@ -174,11 +177,8 @@ class FCMService : FirebaseMessagingService() {
         var type1 = ""
 
         if (extras != null) {
-          val value: String = extras.get("payload").toString()
           try {
-            val obj = JSONObject(value)
-            Log.d("My App", obj.toString())
-            val type: String = obj.getString("type")
+            val type: String = extras?.getString("type").orEmpty()
             type1 = type
             if (type.equals("nothing", ignoreCase = true)) {
               //silent notification, do nothing
@@ -201,7 +201,7 @@ class FCMService : FirebaseMessagingService() {
         val updates: SharedPreferences = this.getSharedPreferences("title", MODE_PRIVATE)
         sendExtras(extras)
 
-        val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
+        // val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
         //coldstart == true if  !isActive
         if (!isActive) {
           if (type1.equals("call_invite", ignoreCase = true) || type1.equals("video chat", ignoreCase = true) || type1.equals("audio chat", ignoreCase = true)) {
@@ -211,7 +211,84 @@ class FCMService : FirebaseMessagingService() {
             edit.clear()
             edit.putString("call_invite", "True")
             edit.commit()
-            startActivity(launchIntent)
+            // startActivity(launchIntent)
+
+            // val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
+            // startActivity(launchIntent)
+
+            // Intent for accepting the call
+            val acceptIntent = Intent(this, MainActivity::class.java).apply {
+                action = "ACTION_ACCEPT_CALL"
+                putExtra("CALL_ACTION", "ACCEPTED")
+            }
+            val acceptPendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                acceptIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Intent for rejecting the call
+            val rejectIntent = Intent(this, MainActivity::class.java).apply {
+                action = "ACTION_REJECT_CALL"
+                putExtra("CALL_ACTION", "REJECTED")
+            }
+            val rejectPendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                rejectIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Launch intent for full-screen activity
+            val fullScreenIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
+            val fullScreenPendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                fullScreenIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Build the notification
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            // Create notification channel (required for Android 8.0 and above)
+            val channelId = "incoming_call_channel"
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Incoming Call",
+                    NotificationManager.IMPORTANCE_HIGH
+                ).apply {
+                    description = "Incoming call notifications"
+                    enableVibration(true)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            val notification = NotificationCompat.Builder(this, channelId)
+                .setContentTitle("Incoming Call")
+                .setContentText("John Doe is calling...")
+                .setSmallIcon(android.R.drawable.sym_call_incoming)
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setFullScreenIntent(fullScreenPendingIntent, true) // Show as a full-screen notification
+                .setAutoCancel(false) // Prevent dismissal on tap
+                .setOngoing(true) // Make the notification persistent
+                .addAction(
+                    android.R.drawable.ic_menu_call, // Accept icon
+                    "Accept",
+                    acceptPendingIntent
+                )
+                .addAction(
+                    android.R.drawable.ic_menu_close_clear_cancel, // Reject icon
+                    "Reject",
+                    rejectPendingIntent
+                )
+                .build()
+
+            // Show the notification
+            notificationManager.notify(1, notification)
             return
           }
         }
