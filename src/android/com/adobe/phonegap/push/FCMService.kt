@@ -200,9 +200,7 @@ class FCMService : FirebaseMessagingService() {
 
         val updates: SharedPreferences = this.getSharedPreferences("title", MODE_PRIVATE)
         sendExtras(extras)
-
-        // val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
-        //coldstart == true if  !isActive
+        // coldstart == true if  !isActive
         if (!isActive) {
           if (type1.equals("call_invite", ignoreCase = true) || type1.equals("video chat", ignoreCase = true) || type1.equals("audio chat", ignoreCase = true)) {
             //Group call
@@ -211,7 +209,6 @@ class FCMService : FirebaseMessagingService() {
             edit.clear()
             edit.putString("call_invite", "True")
             edit.commit()
-            // startActivity(launchIntent)
 
             // val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
             // startActivity(launchIntent)
@@ -289,9 +286,78 @@ class FCMService : FirebaseMessagingService() {
 
             // Show the notification
             notificationManager.notify(1, notification)
+
+
+            // // Define channel ID and name for notification
+            // val channelId = "call_channel"
+            // val channelName = "Incoming Call"
+
+            // val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
+            //   putExtra("action", "accepted")
+            // }
+
+            // val pendingIntent = PendingIntent.getActivity(
+            //   this,
+            //   0,
+            //   launchIntent,
+            //   PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            // )
+
+            // // Define Accept action
+            // val acceptIntent =  packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
+            //   putExtra("action", "accepted")
+            // }
+
+            // val acceptPendingIntent = PendingIntent.getActivity(
+            //   this,
+            //   0,
+            //   acceptIntent,
+            //   PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            // )
+
+            // // Define Accept action
+            // val rejectIntent =  packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
+            //   putExtra("action", "rejected")
+            // }
+
+            // val rejectPendingIntent = PendingIntent.getActivity(
+            //   this,
+            //   0,
+            //   rejectIntent,
+            //   PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            // )
+
+            // val localIcon = pushSharedPref.getString(PushConstants.ICON, null)
+
+            // val mNotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+            // val notification: NotificationCompat.Builder = createNotificationBuilder(extras, mNotificationManager)
+            //     .setContentTitle("Incoming Call")
+            //     .setContentText("Someone is calling you...")
+            //     // .setSmallIcon(localIcon)
+            //     .setPriority(NotificationCompat.PRIORITY_MAX)
+            //     .setCategory(NotificationCompat.CATEGORY_CALL)
+            //     .setDefaults(NotificationCompat.DEFAULT_LIGHTS or NotificationCompat.DEFAULT_VIBRATE)
+            //     .setFullScreenIntent(pendingIntent, true)
+            //     .setAutoCancel(false)
+            //     .addAction(android.R.drawable.ic_menu_call, "Accept", acceptPendingIntent)
+            //     .addAction(android.R.drawable.ic_menu_call, "Reject", rejectPendingIntent)
+            //     .setOngoing(true)
+
+            // setNotificationSmallIcon(extras, notification, localIcon)
+            // getSystemService(NotificationManager::class.java).notify(1, notification.build())
+
+            // Play ringtone
+            // val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            // val ringtone = RingtoneManager.getRingtone(this, ringtoneUri)
+            // ringtone.play()
+
+            Log.d(TAG, "In Background - FullScreenIntent Sent")
             return
-          }
+          } 
         }
+
+        showNotificationIfPossible(extras)
+        return
         //End of Custom code
         /////////////////////////////////////////////////////////////////
 
