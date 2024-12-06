@@ -8,6 +8,9 @@ import android.os.Bundle
 import android.util.Log
 import androidx.core.app.RemoteInput
 
+import com.adobe.phonegap.push.RingtonePlayer
+import android.view.WindowManager
+import android.os.Build
 /**
  * Background Handler Activity
  */
@@ -32,18 +35,50 @@ class BackgroundHandlerActivity : Activity() {
 
     Log.v(TAG, "onCreate")
 
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+      setShowWhenLocked(true)
+      setTurnScreenOn(true)
+    } else {
+      window.addFlags(
+        WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON or
+        WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD or
+        WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+        WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+      )
+    }
+
     intent.extras?.let { extras ->
       val notId = extras.getInt(PushConstants.NOT_ID, 0)
       val callback = extras.getString(PushConstants.CALLBACK)
       val startOnBackground = extras.getBoolean(PushConstants.START_IN_BACKGROUND, false)
       val dismissed = extras.getBoolean(PushConstants.DISMISSED, false)
+      val call_action = extras.getString("CALL_ACTION", "")
 
       Log.d(TAG, "Not ID: $notId")
       Log.d(TAG, "Callback: $callback")
       Log.d(TAG, "Start In Background: $startOnBackground")
       Log.d(TAG, "Dismissed: $dismissed")
+      Log.d(TAG, "Call_action: $call_action")
 
       FCMService().setNotification(notId, "")
+
+      when (call_action) {
+      "ACCEPTED" -> {
+        RingtonePlayer.stop()
+
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(notId)
+      }
+
+      "REJECTED" -> {
+        RingtonePlayer.stop()
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(notId)
+        processPushBundle()
+        finish()
+        return
+      }
+    }
 
       if (!startOnBackground) {
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
