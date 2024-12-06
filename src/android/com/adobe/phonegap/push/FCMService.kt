@@ -41,7 +41,10 @@ import android.os.Handler;
 import android.R
 import android.app.NotificationChannel
 import com.everycrave.livewire.MainActivity
-
+import android.media.RingtoneManager
+import android.app.KeyguardManager
+import android.os.Looper
+import com.adobe.phonegap.push.RingtonePlayer
 
 
 
@@ -136,6 +139,9 @@ class FCMService : FirebaseMessagingService() {
       extras.putString(PushConstants.COLOR, it.color)
     }
 
+    val notId = System.currentTimeMillis().toInt() // Generates a unique ID based on the current time
+    extras.putInt(PushConstants.NOT_ID, notId)
+    
     for ((key, value) in message.data) {
       extras.putString(key, value)
     }
@@ -168,6 +174,9 @@ class FCMService : FirebaseMessagingService() {
       } else {
         Log.d(TAG, "In Background")
         extras.putBoolean(PushConstants.COLDSTART, isActive)
+
+        val keyguardManager = getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+        val isPhoneLocked = keyguardManager.isKeyguardLocked
         // showNotificationIfPossible(extras)
 
         ////////////////////////////////////////////////////////////////////////
@@ -175,6 +184,7 @@ class FCMService : FirebaseMessagingService() {
 
         //Code to get contents of the bundle
         var type1 = ""
+        val contactName: String = extras?.getString("name","")
 
         if (extras != null) {
           try {
@@ -213,32 +223,55 @@ class FCMService : FirebaseMessagingService() {
             // val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
             // startActivity(launchIntent)
 
+            val ACTION_ACCEPT_CALL = "com.everycrave.livewire.ACTION_ACCEPT_CALL"
+            val ACTION_REJECT_CALL = "com.everycrave.livewire.ACTION_REJECT_CALL"
+
             // Intent for accepting the call
-            val acceptIntent = Intent(this, MainActivity::class.java).apply {
-                action = "ACTION_ACCEPT_CALL"
-                putExtra("CALL_ACTION", "ACCEPTED")
+            val acceptIntent = Intent(this, BackgroundHandlerActivity::class.java).apply {
+              action = ACTION_ACCEPT_CALL
+              putExtra("CALL_ACTION", "ACCEPTED")
+              putExtra(PushConstants.NOT_ID, notId)
             }
             val acceptPendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                acceptIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+              this,
+              0,
+              acceptIntent,
+              PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
             // Intent for rejecting the call
-            val rejectIntent = Intent(this, MainActivity::class.java).apply {
-                action = "ACTION_REJECT_CALL"
-                putExtra("CALL_ACTION", "REJECTED")
+            val rejectIntent = Intent(this, BackgroundHandlerActivity::class.java).apply {
+              action = ACTION_REJECT_CALL
+              putExtra("CALL_ACTION", "REJECTED")
+              putExtra(PushConstants.NOT_ID, notId)
             }
             val rejectPendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                rejectIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+              this,
+              0,
+              rejectIntent,
+              PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+
+            // Intent for dismissing the call
+            val dismissIntent = Intent(this, BackgroundHandlerActivity::class.java).apply {
+              action = ACTION_REJECT_CALL
+              putExtra("CALL_ACTION", "REJECTED")
+              putExtra(PushConstants.NOT_ID, notId)
+            }
+            val dismissPendingIntent = PendingIntent.getActivity(
+              this,
+              0,
+              dismissIntent,
+              PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 
             // Launch intent for full-screen activity
-            val fullScreenIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)
+            val fullScreenIntent = Intent(this, BackgroundHandlerActivity::class.java).apply {
+              action = ACTION_ACCEPT_CALL
+              putExtra("CALL_ACTION", "ACCEPTED")
+              putExtra(PushConstants.NOT_ID, notId)
+            }
+
             val fullScreenPendingIntent = PendingIntent.getActivity(
                 this,
                 0,
@@ -252,20 +285,20 @@ class FCMService : FirebaseMessagingService() {
             // Create notification channel (required for Android 8.0 and above)
             val channelId = "incoming_call_channel"
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val channel = NotificationChannel(
-                    channelId,
-                    "Incoming Call",
-                    NotificationManager.IMPORTANCE_HIGH
-                ).apply {
-                    description = "Incoming call notifications"
-                    enableVibration(true)
-                }
-                notificationManager.createNotificationChannel(channel)
+              val channel = NotificationChannel(
+                channelId,
+                "Incoming Call",
+                NotificationManager.IMPORTANCE_HIGH
+              ).apply {
+                  description = "Incoming call notifications"
+                  enableVibration(true)
+              }
+              notificationManager.createNotificationChannel(channel)
             }
 
             val notification = NotificationCompat.Builder(this, channelId)
                 .setContentTitle("Incoming Call")
-                .setContentText("John Doe is calling...")
+                .setContentText("$contactName is calling...")
                 .setSmallIcon(android.R.drawable.sym_call_incoming)
                 .setPriority(NotificationCompat.PRIORITY_MAX)
                 .setCategory(NotificationCompat.CATEGORY_CALL)
@@ -282,80 +315,29 @@ class FCMService : FirebaseMessagingService() {
                     "Reject",
                     rejectPendingIntent
                 )
+                .setDeleteIntent(dismissPendingIntent)
                 .build()
 
             // Show the notification
-            notificationManager.notify(1, notification)
+            notificationManager.notify(notId, notification)
 
+            if(!isPhoneLocked) {
+              RingtonePlayer.play(applicationContext)
 
-            // // Define channel ID and name for notification
-            // val channelId = "call_channel"
-            // val channelName = "Incoming Call"
-
-            // val launchIntent = packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
-            //   putExtra("action", "accepted")
-            // }
-
-            // val pendingIntent = PendingIntent.getActivity(
-            //   this,
-            //   0,
-            //   launchIntent,
-            //   PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            // )
-
-            // // Define Accept action
-            // val acceptIntent =  packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
-            //   putExtra("action", "accepted")
-            // }
-
-            // val acceptPendingIntent = PendingIntent.getActivity(
-            //   this,
-            //   0,
-            //   acceptIntent,
-            //   PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            // )
-
-            // // Define Accept action
-            // val rejectIntent =  packageManager.getLaunchIntentForPackage(applicationContext.packageName)?.apply {
-            //   putExtra("action", "rejected")
-            // }
-
-            // val rejectPendingIntent = PendingIntent.getActivity(
-            //   this,
-            //   0,
-            //   rejectIntent,
-            //   PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            // )
-
-            // val localIcon = pushSharedPref.getString(PushConstants.ICON, null)
-
-            // val mNotificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
-            // val notification: NotificationCompat.Builder = createNotificationBuilder(extras, mNotificationManager)
-            //     .setContentTitle("Incoming Call")
-            //     .setContentText("Someone is calling you...")
-            //     // .setSmallIcon(localIcon)
-            //     .setPriority(NotificationCompat.PRIORITY_MAX)
-            //     .setCategory(NotificationCompat.CATEGORY_CALL)
-            //     .setDefaults(NotificationCompat.DEFAULT_LIGHTS or NotificationCompat.DEFAULT_VIBRATE)
-            //     .setFullScreenIntent(pendingIntent, true)
-            //     .setAutoCancel(false)
-            //     .addAction(android.R.drawable.ic_menu_call, "Accept", acceptPendingIntent)
-            //     .addAction(android.R.drawable.ic_menu_call, "Reject", rejectPendingIntent)
-            //     .setOngoing(true)
-
-            // setNotificationSmallIcon(extras, notification, localIcon)
-            // getSystemService(NotificationManager::class.java).notify(1, notification.build())
-
-            // Play ringtone
-            // val ringtoneUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            // val ringtone = RingtoneManager.getRingtone(this, ringtoneUri)
-            // ringtone.play()
+              // Add a timer to stop ringing after a delay
+              Handler(Looper.getMainLooper()).postDelayed({
+                RingtonePlayer.stop()
+                // Hide notification if no action was taken
+                notificationManager.cancel(notId)
+              }, 30000) // Stop ringing after 30 seconds
+            }
 
             Log.d(TAG, "In Background - FullScreenIntent Sent")
             return
           } 
         }
 
+        sendExtras(extras)
         showNotificationIfPossible(extras)
         return
         //End of Custom code
