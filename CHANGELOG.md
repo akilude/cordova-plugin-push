@@ -1,5 +1,76 @@
 # Change Log
 
+## 5.0.4
+
+- Updated the plugin version in `plugin.xml`. (It was missed in the last three patches :D)
+
+## 5.0.3
+
+**Important Note:**
+
+This patch release fixes the implementation of the `forceShow` option on iOS to align with Android's behavior.The original goal was to provide identical functionality, but the iOS implementation included unintended platform-specific behavior. While this might feel like a breaking change from version 5.0.0 (2024/11/21), it is classified as a patch release because it corrects a bug where notifications were processed without user interaction and did not align with Android's implementation. This update eliminates the need for developers to handle platform-specific cases, ensuring consistency with Android.
+
+**Fixes:**
+
+- fix(ios): dont trigger `notificationReceived` on app reload (#333)
+- fix(ios): `forceShow` to display toast but trigger event until tapped (#332)
+
+## 5.0.2
+
+**Fixes:**
+
+- fix(android): add missing `import androidx.core.app.ActivityCompat` (#331)
+
+## 5.0.1
+
+**Fixes:**
+
+- fix(ios): revert accidental change to category "`callback`" (#328)
+- fix(ios): update reset flags placement in `notificationReceived` (#329)
+- fix(ios): request new permissions based on ios config changes (#326)
+- fix(android): prevent permission dialog appearing when already denied (#325)
+- fix(ios): exclude configure if `FIRApp` is already configured (#321)
+- fix(ios): reset flags & store message after processing notification received (#319)
+- fix(ios): make sure `notificationMessage` is immutable (#317)
+
+**Others:**
+
+- chore(*): typings - update comments & iOS `forceShow` option (#327)
+- ci: replace lock app with lock-threads workflow
+
+## 5.0.0
+
+**Breaking:**
+
+- chore(android)!: remove before compile hook script (#307)
+- fix(ios)!: duplicate notification presentation on iOS 18.0 (#303)
+- feat(ios)!: move `AppDelegate` logic to `PushPlugin.m` (#300)
+- feat(ios)!: bump `firebase@10.24.0` (#294)
+- feat(ios)!: extract FCM related logic to `PushPluginFCM` (#293)
+- chore(ios)!: remove unused & deprecated code & styling formatting (#291)
+
+**Features:**
+
+- feat(ios): extract settings into `PushPluginSettings` (#292)
+- feat(ios): implement `forceShow` (#276)
+
+**Fixes:**
+
+- fix(android): `getCircleBitmap` not displaying image (#311)
+- fix(*): add `clearNotification` to typescript definitions (#309)
+- fix(ios): on notification event payload & stop background task (#301)
+- fix(ios): run `setApplicationIconBadgeNumber` on main thread (#302)
+- fix(android): clipped notification text and expand arrow (#286)
+- fix(ios): add missing `critical` to typings (#271)
+
+**Others:**
+
+- chore: bump plugin.xml to 5.0.0 (#310)
+- chore: revert back to `AppDelegate` (#306)
+- chore(ios): update all NSLog to include `[PushPlugin]` prefix (#290)
+- doc: update link to iOS payload keys (#312)
+- doc: formatting and including 5.0.0 (#308)
+
 ## 4.0.0
 
 **Breaking:**

@@ -29,8 +29,6 @@
 #import <Cordova/CDVPlugin.h>
 #import <PushKit/PushKit.h>
 
-@protocol GGLInstanceIDDelegate;
-@protocol GCMReceiverDelegate;
 @interface PushPlugin : CDVPlugin
 {
     NSDictionary *notificationMessage;
@@ -57,31 +55,15 @@
 @property BOOL forceShow;
 @property (nonatomic, strong) NSMutableDictionary *handlerObj;
 
+
 - (void)init:(CDVInvokedUrlCommand*)command;
 - (void)unregister:(CDVInvokedUrlCommand*)command;
 - (void)subscribe:(CDVInvokedUrlCommand*)command;
 - (void)unsubscribe:(CDVInvokedUrlCommand*)command;
 - (void)clearNotification:(CDVInvokedUrlCommand*)command;
 
-- (void)didRegisterForRemoteNotificationsWithDeviceToken:(NSData *)deviceToken;
-- (void)didFailToRegisterForRemoteNotificationsWithError:(NSError *)error;
-
-- (void)setNotificationMessage:(NSDictionary *)notification;
-- (void)notificationReceived;
-
-- (void)willSendDataMessageWithID:(NSString *)messageID error:(NSError *)error;
-- (void)didSendDataMessageWithID:(NSString *)messageID;
-
 // VoIP Features
 - (void)pushRegistry:(PKPushRegistry *)registry didUpdatePushCredentials:(PKPushCredentials *)credentials forType:(NSString *)type;
 - (void)pushRegistry:(PKPushRegistry *)registry didReceiveIncomingPushWithPayload:(PKPushPayload *)payload forType:(NSString *)type;
-
-// FCM Features
-@property(nonatomic, assign) BOOL usesFCM;
-@property(nonatomic, strong) NSNumber *fcmSandbox;
-@property(nonatomic, strong) NSString *fcmSenderId;
-@property(nonatomic, strong) NSDictionary *fcmRegistrationOptions;
-@property(nonatomic, strong) NSString *fcmRegistrationToken;
-@property(nonatomic, strong) NSArray *fcmTopics;
 
 @end
