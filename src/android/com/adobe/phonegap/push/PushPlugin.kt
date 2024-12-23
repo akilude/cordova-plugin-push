@@ -16,6 +16,7 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.google.android.gms.tasks.Tasks
@@ -441,9 +442,9 @@ class PushPlugin : CordovaPlugin() {
     pushContext = callbackContext
     pluginInitData = data;
 
-    var hasPermission = checkForPostNotificationsPermission()
-    if (!hasPermission)
+    if (!checkForPostNotificationsPermission()) {
       return
+    }
 
     cordova.threadPool.execute(Runnable {
       Log.v(TAG, formatLogMessage("Data=$data"))
@@ -612,8 +613,13 @@ class PushPlugin : CordovaPlugin() {
 
   private fun checkForPostNotificationsPermission(): Boolean {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-      if (!PermissionHelper.hasPermission(this, Manifest.permission.POST_NOTIFICATIONS))
-      {
+      if (!PermissionHelper.hasPermission(this, Manifest.permission.POST_NOTIFICATIONS)) {
+        if (ActivityCompat.shouldShowRequestPermissionRationale(
+            activity,
+            Manifest.permission.POST_NOTIFICATIONS
+          )) {
+          return false
+        }
         PermissionHelper.requestPermission(
           this,
           REQ_CODE_INITIALIZE_PLUGIN,
@@ -622,7 +628,6 @@ class PushPlugin : CordovaPlugin() {
         return false
       }
     }
-
     return true
   }
 

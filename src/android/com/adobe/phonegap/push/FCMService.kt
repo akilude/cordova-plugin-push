@@ -1093,13 +1093,12 @@ class FCMService : FirebaseMessagingService() {
           setNotification(notId, "")
 
           message?.let { messageStr ->
-            val bigText = NotificationCompat.BigTextStyle().run {
-              bigText(fromHtml(messageStr))
-              setBigContentTitle(fromHtml(it.getString(PushConstants.TITLE)))
+            val bigText = NotificationCompat.BigTextStyle()
+              .bigText(fromHtml(messageStr))
+              .setBigContentTitle(fromHtml(it.getString(PushConstants.TITLE)))
 
-              it.getString(PushConstants.SUMMARY_TEXT)?.let { summaryText ->
-                setSummaryText(fromHtml(summaryText))
-              }
+            it.getString(PushConstants.SUMMARY_TEXT)?.let { summaryText ->
+              bigText.setSummaryText(fromHtml(summaryText))
             }
 
             mBuilder.setContentText(fromHtml(messageStr))
@@ -1200,23 +1199,25 @@ class FCMService : FirebaseMessagingService() {
       Bitmap.Config.ARGB_8888
     )
 
+    val canvas = Canvas(output)
+    canvas.drawARGB(0, 0, 0, 0)
+
     val paint = Paint().apply {
       isAntiAlias = true
       color = Color.RED
-      xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
     }
 
-    Canvas(output).apply {
-      drawARGB(0, 0, 0, 0)
+    val cx = (bitmap.width / 2).toFloat()
+    val cy = (bitmap.height / 2).toFloat()
+    val radius = minOf(cx, cy)
 
-      val cx = (bitmap.width / 2).toFloat()
-      val cy = (bitmap.height / 2).toFloat()
-      val radius = if (cx < cy) cx else cy
-      val rect = Rect(0, 0, bitmap.width, bitmap.height)
+    canvas.drawCircle(cx, cy, radius, paint)
 
-      drawCircle(cx, cy, radius, paint)
-      drawBitmap(bitmap, rect, rect, paint)
-    }
+    // Set the Xfermode to SRC_IN after drawing the circle,
+    // so that the bitmap will clip correctly inside the circle.
+    paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+
+    canvas.drawBitmap(bitmap, 0f, 0f, paint)
 
     bitmap.recycle()
     return output
